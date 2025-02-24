@@ -1,0 +1,86 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: To create ECR repository.
+Parameters:
+  ResourcePrefix:
+    Description: Resource prefix that will be used for all resource names (e.g. CPO-s3)
+    Type: String
+  EnvironmentName:
+    Description: An environment name that will be used for resource names
+    Type: String
+  RepositoryName:
+    Description: ECR repository name
+    Type: String
+
+Mappings:
+  Criticality:
+    prod:
+      Tier: "Tier 1"
+    staging:
+      Tier: "Tier 2"
+    uat:
+      Tier: "Tier 2"
+    maint:
+      Tier: "Tier 2"
+    dev:
+      Tier: "Tier 3"
+    qa:
+      Tier: "Tier 3"
+    infra:
+      Tier: "Tier 3"
+
+Resources:
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Sub ${ResourcePrefix}-${EnvironmentName}-${RepositoryName}
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration: {"encryptionType": "AES256"}
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-${RepositoryName}-repository
+        - Key: iv:product
+          Value: CPO
+        - Key: iv:application
+          Value: CPO
+        - Key: iv:instance
+          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
+        - Key: iv:owner
+          Value: InstaVolt UK
+        - Key: iv:criticality
+          Value: !FindInMap [Criticality, !Ref EnvironmentName, Tier]
+        - Key: iv:updated-in-release
+          Value: "R1.1.0"
+        - Key: iv:environment
+          Value: !Ref EnvironmentName
+        - Key: iv:country
+          Value: !Sub "${AWS::Region}"
+        - Key: iv:object-type
+          Value: ECR Repository
+
+  SSMRepositoryName:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Type: String
+      Description: !Sub 'Value of ${RepositoryName} Repository'
+      Value: !Ref ECRRepository
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/ecr/${RepositoryName}'
+      Tags:
+        Name: !Sub /${ResourcePrefix}/${EnvironmentName}/ecr/${RepositoryName}
+        iv:product: CPO
+        iv:application: CPO
+        iv:instance: !Sub ${ResourcePrefix}-${EnvironmentName}
+        iv:owner: InstaVolt UK
+        iv:updated-in-release: "R1.1.0"
+        iv:criticality: !FindInMap [Criticality, !Ref EnvironmentName, Tier]
+        iv:environment: !Ref EnvironmentName
+        iv:country: !Sub "${AWS::Region}"
+        iv:object-type: SSM Parameter
+
+Outputs:
+  RepositoryName:
+    Description: ECR Repository Name
+    Value: !Ref ECRRepository
+  RepositoryArn:
+    Description: ECR Repository ARN
+    Value: !GetAtt ECRRepository.Arn

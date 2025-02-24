@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create Private Link to S3 and SQS via VPC Endpoints
+
+# -- Parameters Definition -- #
+Parameters:
+  ResourcePrefix:
+    Description: Resource prefix that will be used for all resource names (e.g. emsp-vpc)
+    Type: String
+    MinLength: "3"
+    MaxLength: "12"
+    AllowedPattern: "[a-z]+"
+    Default: "emspuk"
+  EnvironmentName:
+    Description: Environment name that will be used for resource names
+    Type: String
+    AllowedValues:
+      - dev
+      - sqa
+      - uat
+      - prod
+      - staging
+      - infra
+      - qa
+    MinLength: "2"
+    MaxLength: "7"
+    AllowedPattern: "[a-z]+"
+  VpcId:
+    Description: Vpc Id
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  SecurityGroupIds:
+    Type: List<String>
+  RouteTableIds:
+    Type: List<String>
+  ResourceBucketArn:
+    Type: String
+    Description: The Amazon Resource Name (ARN) of an S3 website bucket.
+  DriverBucketArn:
+    Type: String
+    Description: The Amazon Resource Name (ARN) of an S3 website bucket.
+  AdminBucketArn:
+    Type: String
+    Description: The Amazon Resource Name (ARN) of an S3 website bucket.
+
+# -- Resources Definition -- #
+Resources:
+  S3VPCEndpoint:
+    Type: "AWS::EC2::VPCEndpoint"
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: "*"
+            Action:
+              - "s3:*"
+            Resource:
+              - !Ref ResourceBucketArn
+              - !Sub "${ResourceBucketArn}/*"
+              - !Ref TempResourceBucketArn
+              - !Sub "${TempResourceBucketArn}/*"
+          - Sid: "Amazon Linux AMI Repository Access"
+            Effect: "Allow"
+            Principal: "*"
+            Action:
+              - "s3:GetObject"
+            Resource:
+              - !Sub "arn:aws:s3:::al2023-repos-${AWS::Region}-de612dc2/*"
+      RouteTableIds: !Ref RouteTableIds
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      VpcId: !Ref VpcId
