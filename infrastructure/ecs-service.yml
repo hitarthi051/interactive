@@ -1,0 +1,187 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: To create ECS Service.
+
+Parameters:
+  ResourcePrefix:
+    Description: Resource prefix that will be used for all resource names 
+    Type: String
+  EnvironmentName:
+    Description: An environment name that will be used for resource names
+    Type: String
+  ContainerName: 
+    Type: String
+  ECRRepoName:
+    Type: String
+  Region:
+    Type: String
+  ClusterName:
+    Description: Cluster Name
+    Type: String
+
+Resources:
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      Family : !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-task-defination
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: !Ref ECRRepoName
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepoName}:latest
+          Essential: 'true'
+          PortMappings:
+            - ContainerPort: '9220'
+              HostPort: '9220'
+              Protocol: tcp
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Join ['', ['/ecs/', !Ref AWS::StackName]]
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+              awslogs-create-group: true
+      NetworkMode: awsvpc
+      Memory: 4GB
+      Cpu: 1vCPU
+      ExecutionRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/ExecutionRole/ARN}}'
+      TaskRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/TaskRole/ARN}}'
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-sg
+      GroupDescription: Security Group for ECS Service
+      VpcId: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/vpc-id}}'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: '0.0.0.0/0'
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-sg
+
+  ECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      ServiceName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-service
+      Cluster: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}/name}}'
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: 
+            - !Ref ECSSecurityGroup
+          Subnets:
+            - !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/ECSTasks/a}}'
+      TaskDefinition: !Ref TaskDefinition
+      LoadBalancers:
+        - TargetGroupArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}-tg/arn}}'
+          ContainerName: !Ref ContainerName
+          ContainerPort: '8000'
+
+  AutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-autoscaling-role
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricAlarm
+                Resource: '*'
+
+  # AutoScalingTarget:
+  #   Type: AWS::ApplicationAutoScaling::ScalableTarget
+  #   Properties:
+  #     MinCapacity: 1
+  #     MaxCapacity: 10
+  #     ResourceId: !Join
+  #       - '/'
+  #       - - service
+  #         - !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}/name}}'
+  #         - !GetAtt ECSService.Name
+  #     ScalableDimension: ecs:service:DesiredCount
+  #     ServiceNamespace: ecs
+  #     RoleARN: !GetAtt AutoScalingRole.Arn
+
+  # ScaleUpPolicy:
+  #   Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  #   Properties:
+  #     PolicyName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-scaleup-policy
+  #     PolicyType: StepScaling
+  #     ScalingTargetId: !Ref AutoScalingTarget
+  #     StepScalingPolicyConfiguration:
+  #       AdjustmentType: PercentChangeInCapacity
+  #       Cooldown: 60
+  #       MetricAggregationType: Average
+  #       StepAdjustments:
+  #       - MetricIntervalLowerBound: 50
+  #         MetricIntervalUpperBound: 60
+  #         ScalingAdjustment: 1
+  #       - MetricIntervalLowerBound: 60
+  #         MetricIntervalUpperBound: 70
+  #         ScalingAdjustment: 1
+  #       - MetricIntervalLowerBound: 70
+  #         MetricIntervalUpperBound: 80
+  #         ScalingAdjustment: 1
+  #       - MetricIntervalLowerBound: 80
+  #         MetricIntervalUpperBound: 90
+  #         ScalingAdjustment: 1
+  #       - MetricIntervalLowerBound: 90
+  #         ScalingAdjustment: 1
+
+  # ScaleDownPolicy:
+  #   Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  #   Properties:
+  #     PolicyName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-scaledown-policy
+  #     PolicyType: StepScaling
+  #     ScalingTargetId: !Ref AutoScalingTarget
+  #     StepScalingPolicyConfiguration:
+  #       AdjustmentType: ChangeInCapacity
+  #       Cooldown: 60
+  #       MetricAggregationType: Average
+  #       StepAdjustments:
+  #         - MetricIntervalUpperBound: 0
+  #           ScalingAdjustment: -1
+
+  # AlarmHighRequests:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      ActionsEnabled: TRUE
+      AlarmActions:
+        - !Ref ScaleUpPolicy
+      ComparisonOperator: GreaterThanThreshold
+      AlarmName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-alarm
+      DatapointsToAlarm: 2
+      Dimensions:
+        - Name: "ClusterName"
+          Value: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}/name}}'
+        - Name: "ServerName"
+          Value: !GetAtt ECSService.Name
+      EvaluationPeriods: 3
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      OKActions:
+        - !Ref ScaleDownPolicy
+      Period: 300
+      Statistic: Average
+      TreatMissingData: ignore
+      Threshold: 70
+      Unit: Percent

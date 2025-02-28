@@ -3,31 +3,14 @@ Description: To create ECS Clusters and Service.
 
 Parameters:
   ResourcePrefix:
-    Description: Resource prefix that will be used for all resource names (e.g. CPO-s3)
+    Description: Resource prefix that will be used for all resource names 
     Type: String
   EnvironmentName:
     Description: An environment name that will be used for resource names
     Type: String
   ClusterName:
-    Description: An environment name that will be used for resource names
+    Description: Cluster Name
     Type: String
-    
-Mappings:
-  Criticality:
-    prod:
-      Tier: "Tier 1"
-    staging:
-      Tier: "Tier 2"
-    uat:
-      Tier: "Tier 2"
-    maint:
-      Tier: "Tier 2"  
-    dev:
-      Tier: "Tier 3"
-    qa:
-      Tier: "Tier 3"
-    infra:
-      Tier: "Tier 3"
 
 Resources:
   ECSCluster:
@@ -36,34 +19,92 @@ Resources:
       ClusterName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ClusterName}
       CapacityProviders:
         - FARGATE
-        - FARGATE_SPOT
+        # - FARGATE_SPOT
       DefaultCapacityProviderStrategy:
         - CapacityProvider: FARGATE
           Weight: 1
-        - CapacityProvider: FARGATE_SPOT
-          Weight: 1
+        # - CapacityProvider: FARGATE_SPOT
+        #   Weight: 1
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-${ClusterName}
-        - Key: iv:product
-          Value: CPO
-        - Key: iv:application
-          Value: CPO
-        - Key: iv:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: iv:owner
-          Value: InstaVolt UK
-        - Key: iv:criticality
-          Value: !FindInMap [Criticality, !Ref EnvironmentName, Tier]
-        - Key: iv:updated-in-release
-          Value: "R1.1.0"
-        - Key: iv:environment
-          Value: !Ref EnvironmentName
-        - Key: iv:country
-          Value: !Sub "${AWS::Region}"
-        - Key: iv:object-type
-          Value: ECS Cluster
-  
+          
+ ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ResourcePrefix}-${EnvironmentName}-ECSTaskExecutionRole'
+      Path: '/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'ecs-tasks.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Sub '${ResourcePrefix}-${EnvironmentName}-ECSTaskExecutionPolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'ecr:GetAuthorizationToken'
+                  - 'ecr:BatchCheckLayerAvailability'
+                  - 'ecr:GetDownloadUrlForLayer'
+                  - 'ecr:BatchGetImage'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                  - 'logs:CreateLogGroup'
+                Resource: '*'
+          
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ResourcePrefix}-${EnvironmentName}-ECSTaskRole'
+      Path: '/'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service:
+                - 'ecs-tasks.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Sub '${ResourcePrefix}-${EnvironmentName}-ECSTaskRolePolicy'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'lambda:InvokeFunction'
+                  - 'sns:Publish'
+                  - 'sqs:SendMessage'
+                  - 'sqs:ReceiveMessage'
+                  - 'sqs:DeleteMessage'
+                  - 'sqs:GetQueueAttributes'
+                  - 'dynamodb:PutItem'
+                  - 'dynamodb:UpdateItem'
+                  - 'dynamodb:UpdateTable'
+                  - 'dynamodb:DeleteItem'
+                  - 'dynamodb:GetItem'
+                  - 'secretsmanager:GetSecretValue'
+                  - 'dynamodb:Scan'
+                Resource: '*'
+
+                
+  SSMTaskExecutionRole:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Type: String
+      Description: !Sub 'Task Executrion Role ARN '
+      Value: !GetAtt ECSTaskExecutionRole.Arn
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/ExecutionRole/ARN'
+
+
   SSMforECSClusterName:
     Type: 'AWS::SSM::Parameter'
     Properties:
@@ -73,16 +114,7 @@ Resources:
       Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/name'
       Tags:
         Name: !Sub /${ResourcePrefix}/${EnvironmentName}/${ClusterName}/name
-        iv:product: CPO
-        iv:application: CPO
-        iv:instance: !Sub ${ResourcePrefix}-${EnvironmentName}
-        iv:owner: InstaVolt UK
-        iv:updated-in-release: "R1.1.0"
-        iv:criticality: !FindInMap [Criticality, !Ref EnvironmentName, Tier]
-        iv:environment: !Ref EnvironmentName
-        iv:country: !Sub "${AWS::Region}"
-        iv:object-type: SSM Parameter
-    
+
   SSMforECSClusterArn:
     Type: 'AWS::SSM::Parameter'
     Properties:
@@ -90,23 +122,24 @@ Resources:
       Description: !Sub 'ARN of ${ClusterName} ECS Cluster'
       Value: !GetAtt ECSCluster.Arn
       Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/cluster/${ClusterName}/arn'
-      Tags:
-        Name: !Sub /${ResourcePrefix}/${EnvironmentName}/cluster/${ClusterName}/arn
-        iv:product: CPO
-        iv:application: CPO
-        iv:instance: !Sub ${ResourcePrefix}-${EnvironmentName}
-        iv:owner: InstaVolt UK
-        iv:updated-in-release: "R1.1.0"
-        iv:criticality: !FindInMap [Criticality, !Ref EnvironmentName, Tier]
-        iv:environment: !Ref EnvironmentName
-        iv:country: !Sub "${AWS::Region}"
-        iv:object-type: SSM Parameter
-     
-Outputs:
-  ClusterName:
-    Description: ECR Cluster Name
-    Value: !Ref ECSCluster
 
-  ClusterArn:
-    Description: ECR Cluster ARN
-    Value: !GetAtt ECSCluster.Arn
+  SSMTaskExecutionRole:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Type: String
+      Description: !Sub 'Task Executrion Role ARN'
+      Value: !GetAtt ECSTaskExecutionRole.Arn
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/ExecutionRole/ARN'
+
+  SSMTaskRole:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Type: String
+      Description: !Sub 'Task Role ARN '
+      Value: !GetAtt ECSTaskRole.Arn
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/TaskRole/ARN'
+
+Outputs:
+  ECSTaskExecutionRoleArn:
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Description: ECS Task Execution Role ARN

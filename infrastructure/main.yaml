@@ -1,3 +1,180 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Interactive.Beleive.do Platform - Infrastructure
 
+Parameters:
+  ResourcePrefix:
+    Description: Resource prefix that will be used for all resource names.
+    Type: String
+    Default: 'IBD'
+  EnvironmentName:
+    Description: Environment name that will be used for resource names
+    Type: String
+    MinLength: '2'
+    MaxLength: '20'
+  VPCCidr:
+    Description: VPC CIDR for interactive
+    Type: String
+  PublicSubnetCIDRA:
+    Description: CIDR for Public Subnet in AZ-A
+    Type: String
+  PublicSubnetCIDRB:
+    Description: CIDR for Public Subnet in AZ-B
+    Type: String
+  PrivateSubnetCIDRA:
+    Description: CIDR for Private Subnet in AZ-A (will be used for RDS and lambda resources)
+    Type: String
+  PrivateSubnetCIDRB:
+    Description: CIDR for Private Subnet in AZ-B (will be used for RDS and lambda resources)
+    Type: String
+  ComposerName:
+    Type: String
+  ProviderName:
+    Type: String
+  InteractiveClusterName:
+    Type: String
+
+Resources:
+
+   StaticContentBucket:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        BucketName: 'web-static-content'
+        ResourcePrefix: !Ref ResourcePrefix
+      TemplateURL: ./s3.yml
+      TimeoutInMinutes: 15
+
+   StaticContentCloudFront:
+    DependsOn: StaticContentBucket
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ResourcePrefix: !Ref ResourcePrefix
+        BucketName: !GetAtt StaticContentBucket.Outputs.BucketName
+        BucketArn: !GetAtt StaticContentBucket.Outputs.BucketArn
+        DomainName: !Sub ${StaticContentBucket.Outputs.BucketName}.s3.amazonaws.com
+      TemplateURL: ./cloudfront.yml
+      TimeoutInMinutes: 60
+
+   VPC:
+     Type: AWS::CloudFormation::Stack
+     Properties:
+       Parameters:
+         ResourcePrefix: !Ref ResourcePrefix
+         EnvironmentName: !Ref EnvironmentName
+         CidrBlock: !Ref VPCCidr
+       TemplateURL: ./vpc.yml
+       TimeoutInMinutes: '5'
+       
+   SubnetA:
+     Type: AWS::CloudFormation::Stack
+     Properties:
+       Parameters:
+         ResourcePrefix: !Ref ResourcePrefix
+         EnvironmentName: !Ref EnvironmentName
+         VpcId: !GetAtt VPC.Outputs.VpcId
+         GatewayId: !GetAtt VPC.Outputs.IGWId
+         AvailabilityZone: 'a'
+        #  PublicCidrBlock: !Ref PublicSubnetCIDRA
+         PrivateSubnetCIDR: !Ref PrivateSubnetCIDRA
+       TemplateURL: ./subnet.yml
+       TimeoutInMinutes: 15
+
+   SubnetB:
+     Type: AWS::CloudFormation::Stack
+     Properties:
+       Parameters:
+         ResourcePrefix: !Ref ResourcePrefix
+         EnvironmentName: !Ref EnvironmentName
+         VpcId: !GetAtt VPC.Outputs.VpcId
+         GatewayId: !GetAtt VPC.Outputs.IGWId
+         AvailabilityZone: 'b'
+        #  PublicCidrBlock: !Ref PublicSubnetCIDRB
+         PrivateSubnetCIDR: !Ref PrivateSubnetCIDRB
+       TemplateURL: ./subnet.yml
+       TimeoutInMinutes: 15
+
+    PrivateSubnetStack:
+      Type: AWS::CloudFormation::Stack
+      Properties:
+        TemplateURL: "localRoute.yaml"
+        Parameters:
+          VpcId: !Ref VPC.Outputs.VpcId
+
+   ComposerECRRepository:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        RepositoryName: !Ref ComposerName
+      TemplateURL: ./ecr.yml
+      TimeoutInMinutes: 30
+
+   ProviderECRRepository:
+    Type: 'AWS::CloudFormation::Stack'
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        RepositoryName: !Ref ProviderName
+      TemplateURL: ./ecr.yml
+      TimeoutInMinutes: 30
+
+   InteractiveCluster:
+    Type: 'AWS::CloudFormation::Stack'
+    DependsOn: IAM
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        ClusterName: !Ref InteractiveClusterName
+      TemplateURL: ./ecs.yml
+      TimeoutInMinutes: 30
+  
+   VPCEndpoints:
+     Type: AWS::CloudFormation::Stack
+     DependsOn:
+       - SubnetA
+       - SubnetB
+     Properties:
+       Parameters:
+         ResourcePrefix: !Ref ResourcePrefix
+         EnvironmentName: !Ref EnvironmentName
+         VpcId: !GetAtt VPC.Outputs.VpcId
+         SubnetIds:
+           !Join [
+             ',',
+             [
+               !GetAtt SubnetA.Outputs.PrivateSubnet,
+               !GetAtt SubnetB.Outputs.PrivateSubnet,
+             ],
+           ]
+       TemplateURL: ./vpc-endpoints.yml
+       TimeoutInMinutes: 15
+       
+  ComposerEcsServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./ecs-service.yml
+      TimeoutInMinutes: 30
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ResourcePrefix: !Ref ResourcePrefix
+        ContainerName: !Ref ComposerName
+        ECRRepoName: !Ref ComposerName
+  
+  ProviderEcsServiceStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./ecs-service.yml
+      TimeoutInMinutes: 30
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ResourcePrefix: !Ref ResourcePrefix
+        ContainerName: !Ref ProviderName
+        ECRRepoName: !Ref ProviderName
+
+  

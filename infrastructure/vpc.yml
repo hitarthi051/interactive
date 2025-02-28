@@ -4,7 +4,7 @@ Description: Network Infrastructure - VPC
 # -- Parameters Definition -- #
 Parameters:
   ResourcePrefix:
-    Description: Resource prefix that will be used for all resource names (e.g. emsp-vpc)
+    Description: Resource prefix that will be used for all resource names 
     Type: String
   EnvironmentName:
     Description: Environment name that will be used for resource names
@@ -12,9 +12,6 @@ Parameters:
   CidrBlock:
     Description: The primary IPv4 CIDR block for the VPC
     Type: String
-Conditions:
-  IsProductionEnvironment: !Equals [!Ref EnvironmentName, "prod"]
-  IsStagingEnvironment: !Equals [!Ref EnvironmentName, "staging"]
 
 # -- Resources Definition -- #
 Resources:
@@ -27,55 +24,19 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-VPC
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 VPC
   
-  SSMVpcId:
-    Type: AWS::SSM::Parameter
-    Properties:
-      Description: VPC Id
-      Type: String
-      Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/vpc-id"
-      Value: !Ref VPC
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-IGW
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 InternetGateway
+  # InternetGateway:
+  #   Type: AWS::EC2::InternetGateway
+  #   Properties:
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${ResourcePrefix}-${EnvironmentName}-IGW
   
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
+  # AttachGateway:
+  #   Type: AWS::EC2::VPCGatewayAttachment
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     InternetGatewayId: !Ref InternetGateway
 
   VPCFlowLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -85,20 +46,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-vpc-flow-LogGroup
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: Logs LogGroup
 
   VPCFlowLogRole:
     Type: 'AWS::IAM::Role'
@@ -117,20 +64,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-vpc-flow-log-role
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: IAM Role
+
 
   VPCFlowLog:
     Type: 'AWS::EC2::FlowLog'
@@ -143,20 +77,14 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-vpc-flow-log
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 FlowLog
+  SSMforECSClusterVPCId:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Type: String
+      Description: !Sub 'vpc id'
+      Value: !Ref VPC
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/vpc-id'
+
 
 # -- Outputs -- #
 Outputs:
@@ -166,6 +94,6 @@ Outputs:
   VpcId:
     Value: !Ref VPC
     Description: The VPC unique identifier.
-  IGWId:
-    Value: !Ref InternetGateway
-    Description: The InternetGateway unique identifier.
+  # IGWId:
+  #   Value: !Ref InternetGateway
+  #   Description: The InternetGateway unique identifier.

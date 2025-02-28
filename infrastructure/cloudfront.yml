@@ -1,60 +1,29 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Creates CloudFront distribution, and Route 53 DNS record pointing to the bucket
+Description: Creates CloudFront distribution pointing to the bucket
 
 # -- Parameters Definition -- #
 Parameters:
   ResourcePrefix:
-    Description: Resource prefix that will be used for all resource names (e.g. emsp-vpc)
+    Description: Resource prefix that will be used for all resource names 
     Type: String
   EnvironmentName:
     Description: Environment name that will be used for resource names
     Type: String
-  DomainName:
-    Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone.
-    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
-    ConstraintDescription: Must be a valid DNS zone name.
-  SubDomainName:
-    Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone.
-  UIDomainName:
-    Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone.
-    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
-    ConstraintDescription: Must be a valid DNS zone name.
-  S3UIDomainName:
-    Type: String
-    Description: The DNS name of an existing Amazon Route 53 hosted zone.
-    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
-    ConstraintDescription: Must be a valid DNS zone name.
-  CertificateArn:
-    Type: String
-    Description: The Amazon Resource Name (ARN) of an AWS Certificate Manager (ACM) certificate.
-    AllowedPattern: 'arn:aws:acm:.*'
   BucketArn:
     Type: String
     Description: The Amazon Resource Name (ARN) of an S3 website bucket.
     AllowedPattern: 'arn:aws:s3:.*'
-  BucketDomainName:
+  BucketName:
     Type: String
-  WebsiteLabel:
-    Type: String 
-    Description: Website label
-  WebACLARN:
+  DomainName:
     Type: String
-    Description: WAF global ACL Arn for CloudFront
-    Default: "arn:aws:wafv2:not-confugured"
-    AllowedPattern: 'arn:aws:wafv2:.*'
-  WAFCloudfrontEnabled:
-    Type: String
-    Description: Enable WAF (Web Application Firewall) for CloudFront
-    AllowedValues:
-      - true
-      - false
+    Description: The DNS name of an existing Amazon Route 53 hosted zone
+    AllowedPattern: (?!-)[a-zA-Z0-9-.]{1,63}(?<!-)
+    ConstraintDescription: must be a valid DNS zone name.
+
 Conditions:
   IsProductionEnvironment: !Equals [!Ref EnvironmentName, "prod"]
   IsStagingEnvironment: !Equals [!Ref EnvironmentName, "staging"]
-  ProvisionWAFCloudfront: !Equals [!Ref WAFCloudfrontEnabled, true]
 # -- Resources Definition -- #
 Resources: 
   CloudFrontDistribution:
@@ -62,30 +31,6 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        WebACLId: !If
-          - ProvisionWAFCloudfront
-          - !Ref WebACLARN
-          - !Ref "AWS::NoValue"
-        CustomErrorResponses:
-          - ErrorCode: 404
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 300
-          - ErrorCode: 403
-            ResponseCode: 200
-            ResponsePagePath: /index.html
-            ErrorCachingMinTTL: 300
-        ViewerCertificate:
-# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-cloudfront-distribution-viewercertificate.html
-# If the distribution uses Aliases (alternate domain names or CNAMEs) and 
-# the SSL/TLS certificate is stored in AWS Certificate Manager (ACM), 
-# provide the Amazon Resource Name (ARN) of the ACM certificate. 
-# CloudFront only supports ACM certificates in the US East (N. Virginia) Region (us-east-1).
-          AcmCertificateArn: !Ref CertificateArn
-          MinimumProtocolVersion: TLSv1.2_2019
-          SslSupportMethod: sni-only
-        Aliases:
-          - !Ref UIDomainName
         DefaultCacheBehavior:
           AllowedMethods: 
             - HEAD
@@ -101,11 +46,11 @@ Resources:
           MinTTL: 1296000
           DefaultTTL: 31536000
           MaxTTL: 31536000
-          TargetOriginId: frontendSite
+          TargetOriginId: staticContent
           ViewerProtocolPolicy: redirect-to-https
         CacheBehaviors:
           - PathPattern: /static/*
-            TargetOriginId: frontendSite
+            TargetOriginId: staticContent
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods:
               - HEAD
@@ -121,64 +66,33 @@ Resources:
             MinTTL: 31536000
             DefaultTTL: 31536000
             MaxTTL: 31536000
-        DefaultRootObject: index.html
         Enabled: true
         HttpVersion: http2
-        # IPV6Enabled: true | false
         Origins:
-          - DomainName: !Ref BucketDomainName
-            Id: frontendSite
+          - DomainName: !Ref DomainName
+            Id: staticContent
             S3OriginConfig:
               OriginAccessIdentity: ""
             OriginAccessControlId: !Ref CloudFrontOriginAccessControl
       Tags:
         - Key: Name
-          Value: !Sub "${ResourcePrefix}-${EnvironmentName}-${SubDomainName}-cf"
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: CloudFront Distribution
+          Value: !Sub "${ResourcePrefix}-${EnvironmentName}-cf"
 
   CloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
     Properties: 
       OriginAccessControlConfig:
-          Description: !Sub Origin Access Control for ${BucketDomainName}
-          Name: !Ref BucketDomainName
+          Description: !Sub Origin Access Control for ${BucketName}
+          Name: !Ref BucketName
           OriginAccessControlOriginType: s3
           SigningBehavior: always
           SigningProtocol: sigv4
-
-  # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-route53-aliastarget.html
-  # For CloudFront distribution, Z2FDTNDATAQYW2
-  UIRoute53RecordSet:
-    Type: "AWS::Route53::RecordSet"
-    Properties:
-      HostedZoneName: !If 
-        - IsProductionEnvironment
-        - !Sub "${DomainName}."
-        - !Sub "${EnvironmentName}.${DomainName}."
-      Name: !Sub "${UIDomainName}."
-      Type: A
-      AliasTarget:
-        HostedZoneId: Z2FDTNDATAQYW2
-        DNSName: !GetAtt CloudFrontDistribution.DomainName
   
-  UIBucketPolicyCloudFrontRead:
+  BucketPolicyCloudFrontRead:
     DependsOn: CloudFrontDistribution
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref S3UIDomainName
+      Bucket: !Ref BucketName
       PolicyDocument:
         Id: 'CloudFrontWebsiteBucketReadAccessPolicy'
         Version: '2012-10-17'
@@ -201,12 +115,5 @@ Resources:
       Type: String
       Description: CDN Distribution ID
       Value: !Ref CloudFrontDistribution
-      Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/${WebsiteLabel}/distribution/id"
+      Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/distribution/id"
 
-  SSMUIURL:
-    Type: "AWS::SSM::Parameter"
-    Properties:
-      Type: String
-      Description: UI URL
-      Value: !Sub https://${UIDomainName}
-      Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/${WebsiteLabel}/url"

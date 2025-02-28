@@ -4,7 +4,7 @@ Description: Network Infrastructure - Subnet(s)
 # -- Parameters Definition --
 Parameters:
   ResourcePrefix:
-    Description: Resource prefix that will be used for all resource names (e.g. emsp-vpc)
+    Description: Resource prefix that will be used for all resource names
     Type: String
   EnvironmentName:
     Description: Environment name that will be used for resource names
@@ -12,49 +12,32 @@ Parameters:
   VpcId:
     Description: Vpc Id
     Type: AWS::EC2::VPC::Id
-  GatewayId:
-    Description: Internet Gateway Id
-    Type: String
+  # GatewayId:
+  #   Description: Internet Gateway Id
+  #   Type: String
   AvailabilityZone:
     Description: Subnet - Availability Zone
     Type: String
-  PublicCidrBlock:
-    Description: Public Subnet - Cidr Block
-    Type: String
+  # PublicCidrBlock:
+  #   Description: Public Subnet - Cidr Block
+  #   Type: String
   PrivateCidrBlock:
     Description: Private Subnet - Cidr Block
     Type: String
-Conditions:
-  IsProductionEnvironment: !Equals [!Ref EnvironmentName, "prod"]
-  IsStagingEnvironment: !Equals [!Ref EnvironmentName, "staging"]
-  
 
 # -- Resources Definition --
 Resources: 
-  PublicSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Sub "${AWS::Region}${AvailabilityZone}"
-      VpcId: !Ref VpcId
-      CidrBlock: !Ref PublicCidrBlock
-      Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-public-subnet-${AvailabilityZone}
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 Subnet
+  # PublicSubnet:
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     AvailabilityZone: !Sub "${AWS::Region}${AvailabilityZone}"
+  #     VpcId: !Ref VpcId
+  #     CidrBlock: !Ref PublicCidrBlock
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${ResourcePrefix}-${EnvironmentName}-public-subnet-${AvailabilityZone}
 
+  
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -64,20 +47,6 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-private-subnet-${AvailabilityZone}
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 Subnet
 
   SSMPrivateSubnetId:
     Type: AWS::SSM::Parameter
@@ -87,73 +56,14 @@ Resources:
       Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/private-subnet-${AvailabilityZone}"
       Value: !Ref PrivateSubnet
   
-  # # Comment this EIP & NatGateway to remove internet access for private subnet resources
-  EIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
-      Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-eip
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 EIP
   
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-        AllocationId: !GetAtt EIP.AllocationId
-        SubnetId: !Ref PublicSubnet
-        Tags:
-          - Key: Name
-            Value: !Sub ${ResourcePrefix}-${EnvironmentName}-nat-gateway
-          - Key: interactive:instance
-            Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-          - Key: interactive:criticality
-            Value: !If
-              - IsProductionEnvironment
-              - "Teir 1"
-              - !If
-                - IsStagingEnvironment
-                - "Teir 2"
-                - "Teir 3"
-          - Key: interactive:environment
-            Value: !Ref EnvironmentName
-          - Key: interactive:object-type
-            Value: EC2 NatGateway
-  
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VpcId
-      Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-Public-RouteTable-${AvailabilityZone}
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 RouteTable
+  # PublicRouteTable:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VpcId
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${ResourcePrefix}-${EnvironmentName}-Public-RouteTable-${AvailabilityZone}
 
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -162,26 +72,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-Private-RouteTable-${AvailabilityZone}
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: EC2 RouteTable
   
-  PublicRouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet
-      RouteTableId: !Ref PublicRouteTable
+  # PublicRouteTableAssociation:
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     SubnetId: !Ref PublicSubnet
+  #     RouteTableId: !Ref PublicRouteTable
   
   PrivateRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
@@ -189,34 +85,38 @@ Resources:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
   
-  PublicRouteInternetGateway:
-    Type: AWS::EC2::Route
+  # PublicRouteInternetGateway:
+  #   Type: AWS::EC2::Route
+  #   Properties:
+  #     RouteTableId: !Ref PublicRouteTable
+  #     DestinationCidrBlock: 0.0.0.0/0
+  #     GatewayId: !Ref GatewayId      
+  PrivateSubnetId:
+    Type: AWS::SSM::Parameter
     Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref GatewayId      
-  
-  # # Comment this PrivateRouteNatGateway to remove internet access for private subnet resources
-  PrivateRouteNatGateway:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGateway  
+      Description: Private Subnet Id
+      Type: String
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/privateSubnet/ECSTasks/${AvailabilityZone}'
+      Value: !Ref PrivateSubnet
 
+  SSMforECSClusterVPCId:
+    Type: 'AWS::SSM::Parameter'
+    Properties:
+      Type: String
+      Description: !Sub 'Subnet for '
+      Value: !GetAtt  !Ref PrivateSubnet
+      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/ECSTasks/${AvailabilityZone}'
 Outputs:
-  PublicSubnet:
-    Value: !Ref PublicSubnet
-    Description: The public subnet Id
+  # PublicSubnet:
+  #   Value: !Ref PublicSubnet
+  #   Description: The public subnet Id
   PrivateSubnet:
     Value: !Ref PrivateSubnet
     Description: The private subnet Id
-  PublicRouteTable:
-    Value: !Ref PublicRouteTable
-    Description: The public route table Id
+  # PublicRouteTable:
+  #   Value: !Ref PublicRouteTable
+  #   Description: The public route table Id
   PrivateRouteTable:
     Value: !Ref PrivateRouteTable
     Description: The private route table Id
-  NatGateway:
-    Value: !Ref NatGateway
-    Description: The NatGateway Id
+

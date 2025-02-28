@@ -4,7 +4,7 @@ Description: Stack for creating S3 Buckets
 # -- Parameters Definition --
 Parameters:
   ResourcePrefix:
-    Description: Resource prefix that will be used for all resource names (e.g. emsp-vpc)
+    Description: Resource prefix that will be used for all resource names 
     Type: String
   EnvironmentName:
     Description: Environment name that will be used for resource names
@@ -63,26 +63,6 @@ Resources:
               - TransitionInDays: 30
                 StorageClass: GLACIER_IR
         - !Ref "AWS::NoValue"
-      Tags:
-        - Key: Name
-          Value: !If
-            - IsUniqueSubstringEmpty
-            - !Sub "${ResourcePrefix}-${EnvironmentName}-${BucketName}"
-            - !Sub "${ResourcePrefix}-${EnvironmentName}-${BucketName}-${UniqueSubstring}"
-        - Key: interactive:instance
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}
-        - Key: interactive:criticality
-          Value: !If
-            - IsProductionEnvironment
-            - "Teir 1"
-            - !If
-              - IsStagingEnvironment
-              - "Teir 2"
-              - "Teir 3"
-        - Key: interactive:environment
-          Value: !Ref EnvironmentName
-        - Key: interactive:object-type
-          Value: S3 Bucket
 
   CloudWatchLogBucketPolicy:
     DependsOn: S3Bucket
@@ -127,3 +107,6 @@ Outputs:
   BucketArn:
     Description: Arn of S3 Bucket
     Value: !GetAtt S3Bucket.Arn
+  DomainName:
+    Description: "The domain name of the S3 bucket"
+    Value: !GetAtt S3Bucket.DomainName
