@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cloudfront for Backend 
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that will be used for resource names
+    Type: String
+  ResourcePrefix:
+    Description: Resource prefix that will be used for all resource names.
+    Type: String
+    MinLength: '3'
+    MaxLength: '12'
+
+Resources:
+  BackendCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: VpcOriginId # need to check, and apply correct value 
+            DomainName: Vpcorigin name # need to check, and apply correct value 
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: match-viewer
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: VpcOriginId # need to check, and apply correct value 
+          ViewerProtocolPolicy: allow-all
+          AllowedMethods: 
+            - GET
+            - HEAD
+            - OPTIONS
+          ForwardedValues:
+            QueryString: false
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ResourcePrefix}-${EnvironmentName}-backend-distribution'
+
+  SSMforCloudfrontDistributionDNS:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '${ResourcePrefix}-${EnvironmentName}-backend-distribution-dns'
+      Type: String
+      Value: !GetAtt BackendCloudFrontDistribution.DomainName
+      Description: "CloudFront Distribution DNS Name"         
+
+Outputs:
+  backendURL:
+    Description: 'URL for Backend cloudfront'
+    Value: !GetAtt BackendCloudFrontDistribution.DomainName
