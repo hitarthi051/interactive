@@ -152,6 +152,14 @@ Resources:
                !GetAtt SubnetB.Outputs.PrivateSubnet,
              ],
            ]
+         RouteTableIds:
+           !Join [
+             ',',
+             [
+               !GetAtt SubnetA.Outputs.PrivateRouteTable,
+               !GetAtt SubnetB.Outputs.PrivateRouteTable,
+             ],
+           ]
        TemplateURL: ./vpc-endpoints.yml
        TimeoutInMinutes: 15
        

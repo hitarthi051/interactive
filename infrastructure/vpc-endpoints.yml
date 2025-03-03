@@ -20,6 +20,10 @@ Parameters:
     Type: AWS::EC2::VPC::Id
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
+DynamoDBVPCEndpoint  RouteTableIds:
+    Type: List<AWS::EC2::RouteTable::Id>
+    Description: List of Route Table IDs to associate with the VPC Endpoint
+
   # SecurityGroupIds:
   #   Type: List<String>
   # RouteTableIds:
@@ -49,29 +53,16 @@ Resources:
       # SecurityGroupIds:
       #   - !Ref VpcEndpointSecurityGroup
 
-  # S3VPCEndpoint:
-  #   Type: "AWS::EC2::VPCEndpoint"
-  #   Properties:
-  #     PolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: "Allow"
-  #           Principal: "*"
-  #           Action:
-  #             - "s3:*"
-  #           Resource:
-  #             - !Ref ResourceBucketArn
-  #             - !Sub "${ResourceBucketArn}/*"
-  #             - !Ref TempResourceBucketArn
-  #             - !Sub "${TempResourceBucketArn}/*"
-  #         - Sid: "Amazon Linux AMI Repository Access"
-  #           Effect: "Allow"
-  #           Principal: "*"
-  #           Action:
-  #             - "s3:GetObject"
-  #           Resource:
-  #             - !Sub "arn:aws:s3:::al2023-repos-${AWS::Region}-de612dc2/*"
-  #     RouteTableIds: !Ref RouteTableIds
-  #     ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
-  #     VpcEndpointType: Gateway
-  #     VpcId: !Ref VpcId
+  DynamoDBVPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.dynamodb
+      RouteTableIds: !Ref RouteTableIds
+      VpcEndpointType: Gateway
+
+Outputs:
+  DynamoDBVPCEndpointId:
+    Description: DynamoDB VPC Endpoint ID
+    Value: !Ref DynamoDBVPCEndpoint
+

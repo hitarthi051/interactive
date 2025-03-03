@@ -162,26 +162,26 @@ Resources:
   #           ScalingAdjustment: -1
 
   # AlarmHighRequests:
-    Type: AWS::CloudWatch::Alarm
-    Properties:
-      ActionsEnabled: TRUE
-      AlarmActions:
-        - !Ref ScaleUpPolicy
-      ComparisonOperator: GreaterThanThreshold
-      AlarmName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-alarm
-      DatapointsToAlarm: 2
-      Dimensions:
-        - Name: "ClusterName"
-          Value: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}/name}}'
-        - Name: "ServerName"
-          Value: !GetAtt ECSService.Name
-      EvaluationPeriods: 3
-      MetricName: CPUUtilization
-      Namespace: AWS/ECS
-      OKActions:
-        - !Ref ScaleDownPolicy
-      Period: 300
-      Statistic: Average
-      TreatMissingData: ignore
-      Threshold: 70
-      Unit: Percent
+    # Type: AWS::CloudWatch::Alarm
+    # Properties:
+    #   ActionsEnabled: TRUE
+    #   AlarmActions:
+    #     - !Ref ScaleUpPolicy
+    #   ComparisonOperator: GreaterThanThreshold
+    #   AlarmName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-alarm
+    #   DatapointsToAlarm: 2
+    #   Dimensions:
+    #     - Name: "ClusterName"
+    #       Value: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}/name}}'
+    #     - Name: "ServerName"
+    #       Value: !GetAtt ECSService.Name
+    #   EvaluationPeriods: 3
+    #   MetricName: CPUUtilization
+    #   Namespace: AWS/ECS
+    #   OKActions:
+    #     - !Ref ScaleDownPolicy
+    #   Period: 300
+    #   Statistic: Average
+    #   TreatMissingData: ignore
+    #   Threshold: 70
+    #   Unit: Percent
