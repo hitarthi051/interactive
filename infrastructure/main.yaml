@@ -32,10 +32,15 @@ Parameters:
     Type: String
   InteractiveClusterName:
     Type: String
+  TargetGroupName:
+    Type: String
+  LoadBalancerName:
+    Type: String
+  VpcOriginName:
+    Type: String
 
 Resources:
-
-   StaticContentBucket:
+  StaticContentBucket:
     Type: AWS::CloudFormation::Stack
     Properties:
       Parameters:
@@ -45,7 +50,7 @@ Resources:
       TemplateURL: ./s3.yml
       TimeoutInMinutes: 15
 
-   StaticContentCloudFront:
+  StaticContentCloudFront:
     DependsOn: StaticContentBucket
     Type: AWS::CloudFormation::Stack
     Properties:
@@ -58,52 +63,123 @@ Resources:
       TemplateURL: ./cloudfront.yml
       TimeoutInMinutes: 60
 
-   VPC:
-     Type: AWS::CloudFormation::Stack
-     Properties:
-       Parameters:
-         ResourcePrefix: !Ref ResourcePrefix
-         EnvironmentName: !Ref EnvironmentName
-         CidrBlock: !Ref VPCCidr
-       TemplateURL: ./vpc.yml
-       TimeoutInMinutes: '5'
+  VPC:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        CidrBlock: !Ref VPCCidr
+      TemplateURL: ./vpc.yml
+      TimeoutInMinutes: '5'
        
-   SubnetA:
-     Type: AWS::CloudFormation::Stack
-     Properties:
-       Parameters:
-         ResourcePrefix: !Ref ResourcePrefix
-         EnvironmentName: !Ref EnvironmentName
-         VpcId: !GetAtt VPC.Outputs.VpcId
-         GatewayId: !GetAtt VPC.Outputs.IGWId
-         AvailabilityZone: 'a'
-        #  PublicCidrBlock: !Ref PublicSubnetCIDRA
-         PrivateSubnetCIDR: !Ref PrivateSubnetCIDRA
-       TemplateURL: ./subnet.yml
-       TimeoutInMinutes: 15
+  SubnetA:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VPC.Outputs.VpcId
+        AvailabilityZone: 'a'
+        PrivateSubnetCIDR: !Ref PrivateSubnetCIDRA
+      TemplateURL: ./subnet.yml
+      TimeoutInMinutes: 15
 
-   SubnetB:
-     Type: AWS::CloudFormation::Stack
-     Properties:
-       Parameters:
-         ResourcePrefix: !Ref ResourcePrefix
-         EnvironmentName: !Ref EnvironmentName
-         VpcId: !GetAtt VPC.Outputs.VpcId
-         GatewayId: !GetAtt VPC.Outputs.IGWId
-         AvailabilityZone: 'b'
-        #  PublicCidrBlock: !Ref PublicSubnetCIDRB
-         PrivateSubnetCIDR: !Ref PrivateSubnetCIDRB
-       TemplateURL: ./subnet.yml
-       TimeoutInMinutes: 15
+  SubnetB:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VPC.Outputs.VpcId
+        AvailabilityZone: 'b'
+        PrivateSubnetCIDR: !Ref PrivateSubnetCIDRB
+      TemplateURL: ./subnet.yml
+      TimeoutInMinutes: 15
+  
+  VPCEndpoints:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - SubnetA
+      - SubnetB
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VPC.Outputs.VpcId
+        SubnetIds:
+          !Join [
+            ',',
+            [
+              !GetAtt SubnetA.Outputs.PrivateSubnet,
+              !GetAtt SubnetB.Outputs.PrivateSubnet,
+            ],
+          ]
+        RouteTableIds:
+          !Join [
+            ',',
+            [
+              !GetAtt SubnetA.Outputs.PrivateRouteTable,
+              !GetAtt SubnetB.Outputs.PrivateRouteTable,
+            ],
+          ]
+      TemplateURL: ./vpc-endpoints.yml
+      TimeoutInMinutes: 15
+   
+  TargetGroup:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VPC.Outputs.VpcId
+        TGName: !Ref TargetGroupName
+      TemplateURL: ./target-group.yml
+      TimeoutInMinutes: 15
 
-    PrivateSubnetStack:
-      Type: AWS::CloudFormation::Stack
-      Properties:
-        TemplateURL: "localRoute.yaml"
-        Parameters:
-          VpcId: !Ref VPC.Outputs.VpcId
+  LoadBalancer:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        LoadBalancerName: !Ref LoadBalancerName
+        TargetGroupArn: !GetAtt TargetGroup.Outputs.TargetGroupArn
+        VpcId: !GetAtt VPC.Outputs.VpcId
+        SubnetIds:
+          !Join [
+            ',',
+            [
+              !GetAtt SubnetA.Outputs.PrivateSubnet,
+              !GetAtt SubnetB.Outputs.PrivateSubnet,
+            ],
+          ]
+      TemplateURL: ./load-balancer.yml
+      TimeoutInMinutes: 15
 
-   ComposerECRRepository:
+  VpcOrigin:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        LoadBalancerName: !Ref LoadBalancerName
+        VpcOriginName: !Ref VpcOriginName
+      TemplateURL: ./vpc-origin.yml 
+      TimeoutInMinutes: 30
+
+  CloudfrontBackend:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ResourcePrefix: !Ref ResourcePrefix
+        EnvironmentName: !Ref EnvironmentName
+        ALBEndpoint: !GetAtt LoadBalancer.Outputs.ALBEndpoint
+        VpcOriginId: !GetAtt VpcOrigin.Outputs.VpcOriginId
+      TemplateURL: ./cloudfront-backend.yml
+      TimeoutInMinutes: 30
+  
+  ComposerECRRepository:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
       Parameters:
@@ -113,7 +189,7 @@ Resources:
       TemplateURL: ./ecr.yml
       TimeoutInMinutes: 30
 
-   ProviderECRRepository:
+  ProviderECRRepository:
     Type: 'AWS::CloudFormation::Stack'
     Properties:
       Parameters:
@@ -123,7 +199,7 @@ Resources:
       TemplateURL: ./ecr.yml
       TimeoutInMinutes: 30
 
-   InteractiveCluster:
+  InteractiveCluster:
     Type: 'AWS::CloudFormation::Stack'
     DependsOn: IAM
     Properties:
@@ -133,54 +209,27 @@ Resources:
         ClusterName: !Ref InteractiveClusterName
       TemplateURL: ./ecs.yml
       TimeoutInMinutes: 30
-  
-   VPCEndpoints:
-     Type: AWS::CloudFormation::Stack
-     DependsOn:
-       - SubnetA
-       - SubnetB
-     Properties:
-       Parameters:
-         ResourcePrefix: !Ref ResourcePrefix
-         EnvironmentName: !Ref EnvironmentName
-         VpcId: !GetAtt VPC.Outputs.VpcId
-         SubnetIds:
-           !Join [
-             ',',
-             [
-               !GetAtt SubnetA.Outputs.PrivateSubnet,
-               !GetAtt SubnetB.Outputs.PrivateSubnet,
-             ],
-           ]
-         RouteTableIds:
-           !Join [
-             ',',
-             [
-               !GetAtt SubnetA.Outputs.PrivateRouteTable,
-               !GetAtt SubnetB.Outputs.PrivateRouteTable,
-             ],
-           ]
-       TemplateURL: ./vpc-endpoints.yml
-       TimeoutInMinutes: 15
-       
+   
   ComposerEcsServiceStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ./ecs-service.yml
+      TemplateURL: ./ecs-composer-service.yml
       TimeoutInMinutes: 30
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         ResourcePrefix: !Ref ResourcePrefix
         ContainerName: !Ref ComposerName
+        TGName : !Ref TargetGroupName
         ECRRepoName: !Ref ComposerName
   
   ProviderEcsServiceStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ./ecs-service.yml
+      TemplateURL: ./ecs-provider-service.yml
       TimeoutInMinutes: 30
       Parameters:
         EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VPC.Outputs.VpcId
         ResourcePrefix: !Ref ResourcePrefix
         ContainerName: !Ref ProviderName
         ECRRepoName: !Ref ProviderName

@@ -28,15 +28,13 @@ Resources:
       TargetGroupAttributes:
         - Key: stickiness.enabled
           Value: true
-        - Key: preserve_client_ip.enabled
-          Value: true
       VpcId: !Ref VpcId
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-${TGName}-tg       
 
   SSMForTargetGroupName:
-    Type: 'AWS::SSM::Parameter'
+    Type: AWS::SSM::Parameter
     Properties:
       Type: String
       Description: !Sub 'Target Group Name'
@@ -46,7 +44,7 @@ Resources:
         Name: !Sub /${ResourcePrefix}/${EnvironmentName}/${TGName}-tg/name
 
   SSMForTargetGroupArn:
-    Type: 'AWS::SSM::Parameter'
+    Type: AWS::SSM::Parameter
     Properties:
       Type: String
       Description: !Sub 'Target Group ARN'
@@ -58,4 +56,4 @@ Resources:
 Outputs:
   TargetGroupArn:
     Value: !Ref TargetGroup
-    Description: ARN for Target Group  
+    Description: ARN for Target Group  TGName

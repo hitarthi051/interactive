@@ -19,31 +19,30 @@ Parameters:
     Type: List<AWS::EC2::Subnet::Id>
 
 Resources:
+
+  InternalALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref VpcId
+      GroupDescription: Allow traffic from cloudfront
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          SourcePrefixListId: "pl-3b927c52"  #Allow Cloudfront - aws managed prefix list id for us-east-1
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-internal-alb-sg     
   InternalALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Name: !Sub ${ResourcePrefix}-${EnvironmentName}-${LoadBalancerName}-lb
       Scheme: internal
       Type: application
-      Subnets:
-        - !Ref SubnetIds
-      SecurityGroups:
+      Subnets: !Ref SubnetIds
+      SecurityGroups: 
         - !Ref InternalALBSecurityGroup
-
-  InternalALBSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      VpcId: !Ref VPC
-      GroupDescription: Allow traffic from cloudfront
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 0
-          ToPort: 65535
-          SourcePrefixListId: "pl-68a54001"  #Allow Cloudfront - aws managed prefix list id for us-east-1
-      Tags:
-        - Key: Name
-          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-internal-alb-sg     
-
+        
   InternalALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:

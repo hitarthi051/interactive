@@ -10,22 +10,25 @@ Parameters:
     Type: String
     MinLength: '3'
     MaxLength: '12'
-
+  VpcOriginId:
+    Type: String  
+    Description: Vpc origin Id
+  ALBEndpoint:
+    Type: String  
+    
 Resources:
   BackendCloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Origins:
-          - Id: VpcOriginId # need to check, and apply correct value 
-            DomainName: Vpcorigin name # need to check, and apply correct value 
-            CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginProtocolPolicy: match-viewer
+          - DomainName: !Ref ALBEndpoint
+            Id: !Ref VpcOriginId 
+            VpcOriginConfig: 
+              VpcOriginId: !Ref VpcOriginId
         Enabled: true
         DefaultCacheBehavior:
-          TargetOriginId: VpcOriginId # need to check, and apply correct value 
+          TargetOriginId: !Ref VpcOriginId
           ViewerProtocolPolicy: allow-all
           AllowedMethods: 
             - GET

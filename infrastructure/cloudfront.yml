@@ -76,7 +76,7 @@ Resources:
             OriginAccessControlId: !Ref CloudFrontOriginAccessControl
       Tags:
         - Key: Name
-          Value: !Sub "${ResourcePrefix}-${EnvironmentName}-cf"
+          Value: !Sub "${ResourcePrefix}-${EnvironmentName}--frontend-cf"
 
   CloudFrontOriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl

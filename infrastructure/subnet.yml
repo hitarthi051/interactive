@@ -12,32 +12,16 @@ Parameters:
   VpcId:
     Description: Vpc Id
     Type: AWS::EC2::VPC::Id
-  # GatewayId:
-  #   Description: Internet Gateway Id
-  #   Type: String
   AvailabilityZone:
     Description: Subnet - Availability Zone
     Type: String
-  # PublicCidrBlock:
-  #   Description: Public Subnet - Cidr Block
-  #   Type: String
   PrivateCidrBlock:
     Description: Private Subnet - Cidr Block
     Type: String
 
 # -- Resources Definition --
 Resources: 
-  # PublicSubnet:
-  #   Type: AWS::EC2::Subnet
-  #   Properties:
-  #     AvailabilityZone: !Sub "${AWS::Region}${AvailabilityZone}"
-  #     VpcId: !Ref VpcId
-  #     CidrBlock: !Ref PublicCidrBlock
-  #     Tags:
-  #       - Key: Name
-  #         Value: !Sub ${ResourcePrefix}-${EnvironmentName}-public-subnet-${AvailabilityZone}
-
-  
+ 
   PrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
@@ -55,15 +39,6 @@ Resources:
       Type: String
       Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/private-subnet-${AvailabilityZone}"
       Value: !Ref PrivateSubnet
-  
-  
-  # PublicRouteTable:
-  #   Type: AWS::EC2::RouteTable
-  #   Properties:
-  #     VpcId: !Ref VpcId
-  #     Tags:
-  #       - Key: Name
-  #         Value: !Sub ${ResourcePrefix}-${EnvironmentName}-Public-RouteTable-${AvailabilityZone}
 
   PrivateRouteTable:
     Type: AWS::EC2::RouteTable
@@ -72,25 +47,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-Private-RouteTable-${AvailabilityZone}
-  
-  # PublicRouteTableAssociation:
-  #   Type: AWS::EC2::SubnetRouteTableAssociation
-  #   Properties:
-  #     SubnetId: !Ref PublicSubnet
-  #     RouteTableId: !Ref PublicRouteTable
-  
+
   PrivateRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref PrivateSubnet
       RouteTableId: !Ref PrivateRouteTable
-  
-  # PublicRouteInternetGateway:
-  #   Type: AWS::EC2::Route
-  #   Properties:
-  #     RouteTableId: !Ref PublicRouteTable
-  #     DestinationCidrBlock: 0.0.0.0/0
-  #     GatewayId: !Ref GatewayId      
+       
   PrivateSubnetId:
     Type: AWS::SSM::Parameter
     Properties:
@@ -104,18 +67,15 @@ Resources:
     Properties:
       Type: String
       Description: !Sub 'Subnet for '
-      Value: !GetAtt  !Ref PrivateSubnet
+      Value: !Ref PrivateSubnet
       Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/ECSTasks/${AvailabilityZone}'
+
 Outputs:
-  # PublicSubnet:
-  #   Value: !Ref PublicSubnet
-  #   Description: The public subnet Id
+
   PrivateSubnet:
     Value: !Ref PrivateSubnet
     Description: The private subnet Id
-  # PublicRouteTable:
-  #   Value: !Ref PublicRouteTable
-  #   Description: The public route table Id
+
   PrivateRouteTable:
     Value: !Ref PrivateRouteTable
     Description: The private route table Id

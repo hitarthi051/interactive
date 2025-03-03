@@ -19,17 +19,14 @@ Resources:
       ClusterName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ClusterName}
       CapacityProviders:
         - FARGATE
-        # - FARGATE_SPOT
       DefaultCapacityProviderStrategy:
         - CapacityProvider: FARGATE
           Weight: 1
-        # - CapacityProvider: FARGATE_SPOT
-        #   Weight: 1
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-${ClusterName}
           
- ECSTaskExecutionRole:
+  ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub '${ResourcePrefix}-${EnvironmentName}-ECSTaskExecutionRole'
@@ -94,8 +91,7 @@ Resources:
                   - 'secretsmanager:GetSecretValue'
                   - 'dynamodb:Scan'
                 Resource: '*'
-
-                
+           
   SSMTaskExecutionRole:
     Type: 'AWS::SSM::Parameter'
     Properties:
@@ -103,7 +99,6 @@ Resources:
       Description: !Sub 'Task Executrion Role ARN '
       Value: !GetAtt ECSTaskExecutionRole.Arn
       Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/ExecutionRole/ARN'
-
 
   SSMforECSClusterName:
     Type: 'AWS::SSM::Parameter'
@@ -122,14 +117,6 @@ Resources:
       Description: !Sub 'ARN of ${ClusterName} ECS Cluster'
       Value: !GetAtt ECSCluster.Arn
       Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/cluster/${ClusterName}/arn'
-
-  SSMTaskExecutionRole:
-    Type: 'AWS::SSM::Parameter'
-    Properties:
-      Type: String
-      Description: !Sub 'Task Executrion Role ARN'
-      Value: !GetAtt ECSTaskExecutionRole.Arn
-      Name: !Sub '/${ResourcePrefix}/${EnvironmentName}/ExecutionRole/ARN'
 
   SSMTaskRole:
     Type: 'AWS::SSM::Parameter'

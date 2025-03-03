@@ -25,18 +25,18 @@ Resources:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-VPC
   
-  # InternetGateway:
-  #   Type: AWS::EC2::InternetGateway
-  #   Properties:
-  #     Tags:
-  #       - Key: Name
-  #         Value: !Sub ${ResourcePrefix}-${EnvironmentName}-IGW
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourcePrefix}-${EnvironmentName}-IGW
   
-  # AttachGateway:
-  #   Type: AWS::EC2::VPCGatewayAttachment
-  #   Properties:
-  #     VpcId: !Ref VPC
-  #     InternetGatewayId: !Ref InternetGateway
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
 
   VPCFlowLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -94,6 +94,3 @@ Outputs:
   VpcId:
     Value: !Ref VPC
     Description: The VPC unique identifier.
-  # IGWId:
-  #   Value: !Ref InternetGateway
-  #   Description: The InternetGateway unique identifier.

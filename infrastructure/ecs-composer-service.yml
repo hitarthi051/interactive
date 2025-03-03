@@ -13,6 +13,8 @@ Parameters:
   ECRRepoName:
     Type: String
   Region:
+    Type: String 
+  TGName:
     Type: String
   ClusterName:
     Description: Cluster Name
@@ -26,12 +28,12 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       ContainerDefinitions:
-        - Name: !Ref ECRRepoName
+        - Name: !Ref ContainerName
           Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepoName}:latest
           Essential: 'true'
           PortMappings:
-            - ContainerPort: '9220'
-              HostPort: '9220'
+            - ContainerPort: '8000'
+              HostPort: '8000'
               Protocol: tcp
           LogConfiguration:
             LogDriver: awslogs
@@ -44,7 +46,7 @@ Resources:
       Memory: 4GB
       Cpu: 1vCPU
       ExecutionRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/ExecutionRole/ARN}}'
-      TaskRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/TaskRole/ARN}}'
+      TaskRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/TaskRole/ARN}}'
 
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -57,6 +59,11 @@ Resources:
           FromPort: '0'
           ToPort: '65535'
           CidrIp: '0.0.0.0/0'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-sg
@@ -65,18 +72,19 @@ Resources:
     Type: 'AWS::ECS::Service'
     Properties:
       ServiceName: !Sub ${ResourcePrefix}-${EnvironmentName}-${ContainerName}-service
-      Cluster: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}/name}}'
+      Cluster: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/name}}'
       LaunchType: FARGATE
       NetworkConfiguration:
         AwsvpcConfiguration:
-          AssignPublicIp: ENABLED
+          AssignPublicIp: DISABLED
           SecurityGroups: 
             - !Ref ECSSecurityGroup
           Subnets:
             - !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/ECSTasks/a}}'
+            - !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/ECSTasks/b}}'
       TaskDefinition: !Ref TaskDefinition
       LoadBalancers:
-        - TargetGroupArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ContainerName}-tg/arn}}'
+        - TargetGroupArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${TGName}-tg/arn}}'
           ContainerName: !Ref ContainerName
           ContainerPort: '8000'
 

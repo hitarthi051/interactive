@@ -33,9 +33,6 @@ Resources:
       Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/${VpcOriginName}-vo/name"
       Type: String
       Value: !Sub "${ResourcePrefix}-${EnvironmentName}-${VpcOriginName}-vo"
-      Tags:
-        - Key: Name
-          Value: !Sub "${ResourcePrefix}-${EnvironmentName}-${VpcOriginName}-vo"
 
   SSMForVpcOriginArn:
     Type: AWS::SSM::Parameter
@@ -43,9 +40,6 @@ Resources:
       Name: !Sub "/${ResourcePrefix}/${EnvironmentName}/${VpcOriginName}-vo/arn"
       Type: String
       Value: !Ref VpcOrigin # need to check, and apply correct value 
-      Tags:
-        - Key: Name
-          Value: !Sub "${ResourcePrefix}-${EnvironmentName}-${VpcOriginName}-vo"
 
 Outputs:
   VpcOriginId:

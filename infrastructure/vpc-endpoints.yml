@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Create ECR DKR (Docker) Endpoints and ECR API Endpoint
+Description: Create ECR DKR (Docker) Endpoints and ECR API Endpoint and DynamoDB VPC Endpoint  
 
 # -- Parameters Definition -- #
 Parameters:
@@ -20,8 +20,8 @@ Parameters:
     Type: AWS::EC2::VPC::Id
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
-DynamoDBVPCEndpoint  RouteTableIds:
-    Type: List<AWS::EC2::RouteTable::Id>
+  RouteTableIds:
+    Type: List<String>
     Description: List of Route Table IDs to associate with the VPC Endpoint
 
   # SecurityGroupIds:
@@ -31,8 +31,25 @@ DynamoDBVPCEndpoint  RouteTableIds:
   # ResourceBucketArn:
   #   Type: String
   #   Description: The Amazon Resource Name (ARN) of an S3 website bucket.
+  
 # -- Resources Definition -- #
 Resources:
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for VPC Endpoints"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: '0.0.0.0/0'
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: '0.0.0.0/0'
+
   EcrApiEndpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
@@ -40,8 +57,8 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.api"
       VpcEndpointType: Interface
       SubnetIds: !Ref SubnetIds  
-      # SecurityGroupIds:
-      #   - !Ref VpcEndpointSecurityGroup  
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup  
 
   EcrDkrEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -50,8 +67,8 @@ Resources:
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ecr.dkr"
       VpcEndpointType: Interface
       SubnetIds: !Ref SubnetIds
-      # SecurityGroupIds:
-      #   - !Ref VpcEndpointSecurityGroup
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup
 
   DynamoDBVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
