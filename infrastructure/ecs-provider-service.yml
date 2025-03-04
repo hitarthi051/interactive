@@ -46,7 +46,7 @@ Resources:
       Memory: 4GB
       Cpu: 1vCPU
       ExecutionRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/ExecutionRole/ARN}}'
-      TaskRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/${ClusterName}/TaskRole/ARN}}'
+      TaskRoleArn: !Sub '{{resolve:ssm:/${ResourcePrefix}/${EnvironmentName}/TaskRole/ARN}}'
 
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup

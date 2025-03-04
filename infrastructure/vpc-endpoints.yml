@@ -40,14 +40,14 @@ Resources:
       GroupDescription: "Security group for VPC Endpoints"
       VpcId: !Ref VpcId
       SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: '0'
-          ToPort: '65535'
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
           CidrIp: '0.0.0.0/0'
       SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: '0'
-          ToPort: '65535'
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
           CidrIp: '0.0.0.0/0'
 
   EcrApiEndpoint:
@@ -59,6 +59,7 @@ Resources:
       SubnetIds: !Ref SubnetIds  
       SecurityGroupIds:
         - !Ref VpcEndpointSecurityGroup  
+      PrivateDnsEnabled: true
 
   EcrDkrEndpoint:
     Type: AWS::EC2::VPCEndpoint
@@ -68,7 +69,27 @@ Resources:
       VpcEndpointType: Interface
       SubnetIds: !Ref SubnetIds
       SecurityGroupIds:
-        - !Ref VpcEndpointSecurityGroup
+        - !Ref VpcEndpointSecurityGroup  
+      PrivateDnsEnabled: true
+
+  EcrS3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcEndpointType: Gateway
+      RouteTableIds: !Ref RouteTableIds
+
+  EcrLogEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.logs"
+      VpcEndpointType: Interface
+      SubnetIds: !Ref SubnetIds
+      SecurityGroupIds:
+        - !Ref VpcEndpointSecurityGroup 
+      PrivateDnsEnabled: true
 
   DynamoDBVPCEndpoint:
     Type: AWS::EC2::VPCEndpoint
