@@ -15,7 +15,8 @@ Parameters:
   Region:
     Type: String
   VpcId:
-    Type: String
+    Description: Vpc Id
+    Type: AWS::EC2::VPC::Id
   ClusterName:
     Description: Cluster Name
     Type: String

@@ -23,7 +23,9 @@ Resources:
       IpAddressType: ipv4
       Name: !Sub ${ResourcePrefix}-${EnvironmentName}-${TGName}-tg
       Protocol: HTTP
-      Port: 80
+      # HealthCheckMatcher:
+      #   HttpCode: "200-499"
+      Port: 8000
       TargetType: ip
       TargetGroupAttributes:
         - Key: stickiness.enabled

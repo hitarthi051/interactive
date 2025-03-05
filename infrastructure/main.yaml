@@ -14,12 +14,6 @@ Parameters:
   VPCCidr:
     Description: VPC CIDR for interactive
     Type: String
-  PublicSubnetCIDRA:
-    Description: CIDR for Public Subnet in AZ-A
-    Type: String
-  PublicSubnetCIDRB:
-    Description: CIDR for Public Subnet in AZ-B
-    Type: String
   PrivateSubnetCIDRA:
     Description: CIDR for Private Subnet in AZ-A (will be used for RDS and lambda resources)
     Type: String
@@ -220,7 +214,7 @@ Resources:
         ResourcePrefix: !Ref ResourcePrefix
         ContainerName: !Ref ComposerName
         TGName : !Ref TargetGroupName
-        ECRRepoName: !Ref ComposerName
+        ECRRepoName: !GetAtt ComposerECRRepository.Outputs.RepositoryName
   
   ProviderEcsServiceStack:
     Type: AWS::CloudFormation::Stack
@@ -232,6 +226,6 @@ Resources:
         VpcId: !GetAtt VPC.Outputs.VpcId
         ResourcePrefix: !Ref ResourcePrefix
         ContainerName: !Ref ProviderName
-        ECRRepoName: !Ref ProviderName
+        ECRRepoName: !GetAtt ProviderECRRepository.Outputs.RepositoryName
 
   

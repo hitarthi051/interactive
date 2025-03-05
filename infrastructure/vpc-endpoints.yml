@@ -23,14 +23,6 @@ Parameters:
   RouteTableIds:
     Type: List<String>
     Description: List of Route Table IDs to associate with the VPC Endpoint
-
-  # SecurityGroupIds:
-  #   Type: List<String>
-  # RouteTableIds:
-  #   Type: List<String>
-  # ResourceBucketArn:
-  #   Type: String
-  #   Description: The Amazon Resource Name (ARN) of an S3 website bucket.
   
 # -- Resources Definition -- #
 Resources:
